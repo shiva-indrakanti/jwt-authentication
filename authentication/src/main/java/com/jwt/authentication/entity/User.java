@@ -23,6 +23,8 @@ public class User {
     @Column(name = "assigned_role")
     private String assignedRole;
 
+    public User() {
+    }
 
     public User(String username, String password, String role) {
         this.username = username;
