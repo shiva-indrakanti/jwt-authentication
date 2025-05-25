@@ -1,4 +1,5 @@
 package com.jwt.authentication.service;
+import com.jwt.authentication.entity.CustomUserDetails;
 import com.jwt.authentication.entity.User;
 import com.jwt.authentication.repo.IAuthRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         System.out.println("Loading user from DB: " + username);
         User user = repo.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return new org.springframework.security.core.userdetails.User(user.getUsername(),
-                                         user.getPassword(),List.of(new SimpleGrantedAuthority(user.getAssignedRole())));
+        return new CustomUserDetails(user);
     }
 }

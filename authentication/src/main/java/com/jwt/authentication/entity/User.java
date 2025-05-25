@@ -1,10 +1,6 @@
 package com.jwt.authentication.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-
-import java.util.List;
 
 @Entity
 @Table(name = "user_auth_table")
@@ -17,6 +13,9 @@ public class User {
     @Column(name = "username")
     private String username;
 
+    @Column(name = "email_id")
+    private String email;
+
     @Column(name = "password")
     private String password;
 
@@ -26,10 +25,19 @@ public class User {
     public User() {
     }
 
-    public User(String username, String password, String role) {
+    public User(String username,String email, String password, String role) {
         this.username = username;
+        this.email = email;
         this.password = password;
         this.assignedRole = role;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getUsername() {

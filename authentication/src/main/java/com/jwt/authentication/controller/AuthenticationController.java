@@ -3,12 +3,10 @@ package com.jwt.authentication.controller;
 import com.jwt.authentication.dto.request.LoginRequest;
 import com.jwt.authentication.dto.request.RegisterRequest;
 import com.jwt.authentication.service.AuthenticationService;
+import com.jwt.authentication.jwt.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,22 +17,17 @@ public class AuthenticationController {
     @Autowired
     private AuthenticationService service;
 
+    @Autowired
+    private JwtUtils utils;
+
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest request){
-        String response = null;
-        response = service.registerUser(request);
+        String response = service.registerUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body("Registration Successful");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-        System.out.println("Inside login controller");
-        String response = service.verifyUser(request);
-        if("User Authenticated".equals(response)){
-            return ResponseEntity.ok(response);
-        }
-        else{
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        return service.handleLogin(request);
     }
 }
