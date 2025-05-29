@@ -59,12 +59,14 @@ public class AuthenticationService {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             LOGGER.info("User Details = "+userDetails);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            String token = utils.generateToken(userDetails.getUsername(),600);
-            long now = System.currentTimeMillis()/1000;
-            UserDto userDto = new UserDto(userDetails.getUsername(),userDetails.getEmail(),userDetails.getRole());
-            LoginResponse response = new LoginResponse(token,600,now,userDto);
-            return ResponseEntity.ok(response);
+            if(authentication.isAuthenticated()) {
+                String token = utils.generateToken(userDetails.getUsername(), 600);
+                long now = System.currentTimeMillis() / 1000;
+                UserDto userDto = new UserDto(userDetails.getUsername(), userDetails.getEmail(), userDetails.getRole());
+                LoginResponse response = new LoginResponse(token, 600, now, userDto);
+                return ResponseEntity.ok(response);
+            }
+            throw new BadCredentialsException("");
         }catch(BadCredentialsException ex){
             LOGGER.error("Invalid Credentials",ex);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Credentials");
@@ -73,6 +75,17 @@ public class AuthenticationService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Token Generation failed");
         }catch(Exception ex){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected error");
+        }
+    }
+
+    public boolean getProfile(String token) {
+        try {
+            return utils.verifyToken(token);
+        }catch (JsonProcessingException | NoSuchAlgorithmException | InvalidKeyException e) {
+            LOGGER.error("Exception occurred during Token verification",e);
+            return false;
+        }catch(Exception ex){
+            return false;
         }
     }
 }

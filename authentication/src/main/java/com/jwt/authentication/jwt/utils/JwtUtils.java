@@ -1,6 +1,7 @@
 package com.jwt.authentication.jwt.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jwt.authentication.jwt.SecretProvider;
 import com.jwt.authentication.service.AuthenticationService;
@@ -31,6 +32,10 @@ public class JwtUtils {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(input);
     }
 
+    public static byte[] base64UrlDecode(String input){
+        return Base64.getUrlDecoder().decode(input);
+    }
+
     //generating token
     public String generateToken(String subject, long expInSeconds) throws JsonProcessingException, NoSuchAlgorithmException, InvalidKeyException {
         // Header
@@ -48,16 +53,68 @@ public class JwtUtils {
         payload.put("iat", currentTime);
         payload.put("exp", expiryTime);
         String encodedPayload = base64UrlEncode(mapper.writeValueAsBytes(payload));
-        String headerPayload = encodedHeader + "." + encodedPayload;
+        String encodedHeaderAndPayload = encodedHeader + "." + encodedPayload;
 
         // Signature
-        Mac hmac = Mac.getInstance("HmacSHA256");
-        hmac.init(new SecretKeySpec(secretProvider.getSecretKey(), "HmacSHA256"));
-        byte[] signature = hmac.doFinal(headerPayload.getBytes(StandardCharsets.UTF_8));
-        String encodedSignature = base64UrlEncode(signature);
-        String token = headerPayload + "." + encodedSignature;
+        String encodedSignature = signToken(encodedHeaderAndPayload);
+        String token = encodedHeaderAndPayload + "." + encodedSignature;
         LOGGER.info("Generated Token = {}", token);
         return token;
     }
 
+    /*
+      method is used to verify the token
+      parameter-1 : token.
+      returns boolean value
+    */
+
+    public boolean verifyToken(String token) throws NoSuchAlgorithmException, InvalidKeyException, JsonProcessingException {
+        String [] parts = token.split("\\.");
+        if(parts.length != 3) return false;
+
+        String header = parts[0];
+        String payload = parts[1];
+        String signature = parts[2];
+
+        String unsignedToken = header +"."+payload;
+        String verifiedSignature = signToken(unsignedToken);
+
+        if(!verifiedSignature.equals(signature)){
+            return false;
+        }
+
+        String decodedPayload = new String(base64UrlDecode(payload),StandardCharsets.UTF_8);
+        LOGGER.info("Debug Decoded payload = "+decodedPayload);
+        Map<String,Object> payloadMap = mapper.readValue(decodedPayload,Map.class);
+        Object expObj = payloadMap.get("exp");
+        if (expObj == null) {
+            throw new RuntimeException("'exp' field is missing in token");
+        }
+        long expiration = ((Number) expObj).longValue();
+        long now = System.currentTimeMillis()/1000;
+        return now < expiration;
+    }
+
+    private String signToken(String data) throws NoSuchAlgorithmException, InvalidKeyException {
+        Mac hmac = Mac.getInstance("HmacSHA256");
+        hmac.init(new SecretKeySpec(secretProvider.getSecretKey(), "HmacSHA256"));
+        byte[] signature = hmac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        return base64UrlEncode(signature);
+    }
+
+    public String extractUsername(String token) {
+        try {
+            // 1. Split the token into 3 parts by '.'
+            String[] parts = token.split("\\.");
+            if (parts.length < 2) {
+                throw new IllegalArgumentException("Invalid JWT token");
+            }
+            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]));
+            Map<String,Object> map = mapper.readValue(payloadJson, new TypeReference<HashMap<String,Object>>(){});
+            return (String) map.get("sub");
+        } catch (Exception e) {
+            LOGGER.info("Failed to extract username: " + e.getMessage());
+            return null;
+        }
+    }
 }
